@@ -2,7 +2,7 @@
 
 return [
   // 是否启用
-  'enabled' => env('PHONE_AUTH_PLUGIN_ENABLED', true),
+  'enabled' => true,
   'product' => env('APP_CNNAME', '杭州网智能媒资系统'),
 
   // 路由前缀
