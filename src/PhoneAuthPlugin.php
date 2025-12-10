@@ -2,7 +2,7 @@
 
 namespace Siaoynli\PhoneAuth;
 
-use App\Plugins\AbstractPlugin;
+use Siaoynli\Plugins\AbstractPlugin;
 
 class PhoneAuthPlugin extends AbstractPlugin
 {
