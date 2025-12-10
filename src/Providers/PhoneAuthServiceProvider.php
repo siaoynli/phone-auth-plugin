@@ -31,8 +31,10 @@ class PhoneAuthServiceProvider extends ServiceProvider
    */
   protected function registerConfig(): void
   {
-    $configPath = __DIR__ . '/../../config/plugin.php';
-    $this->mergeConfigFrom($configPath, 'phone-auth');
+    if (File::isFile(__DIR__ . '/../../config/plugin.php')) {
+      $configPath = __DIR__ . '/../../config/plugin.php';
+      $this->mergeConfigFrom($configPath, 'phone-auth');
+    }
   }
 
   /**
@@ -40,9 +42,11 @@ class PhoneAuthServiceProvider extends ServiceProvider
    */
   protected function publishConfig(): void
   {
-    $this->publishes([
-      __DIR__ . '/../../config/plugin.php' => config_path('phone-auth.php'),
-    ], 'phone-auth-config');
+    if (File::isFile(__DIR__ . '/../../config/plugin.php')) {
+      $this->publishes([
+        __DIR__ . '/../../config/plugin.php' =>  config_path('plugins/' . $this->getPluginName() . '.php'),
+      ], 'phone-auth-config');
+    }
   }
 
   /**
@@ -50,9 +54,11 @@ class PhoneAuthServiceProvider extends ServiceProvider
    */
   protected function publishMigrations(): void
   {
-    $this->publishes([
-      __DIR__ . '/../../database/migrations' => database_path('migrations'),
-    ], 'phone-auth-migrations');
+    if (File::isDirectory(__DIR__ . '/../../database/migrations')) {
+      $this->publishes([
+        __DIR__ . '/../../database/migrations' => database_path('migrations'),
+      ], 'phone-auth-migrations');
+    }
   }
 
   /**
@@ -60,9 +66,11 @@ class PhoneAuthServiceProvider extends ServiceProvider
    */
   protected function publishViews(): void
   {
-    $this->publishes([
-      __DIR__ . '/../../resources/views' => resource_path('views/phone-auth'),
-    ], 'phone-auth-views');
+    if (File::isDirectory(__DIR__ . '/../../resources/views')) {
+      $this->publishes([
+        __DIR__ . '/../../resources/views' => resource_path('views/plugins/' . $this->getPluginName()),
+      ], 'phone-auth-views');
+    }
   }
 
   /**
@@ -70,8 +78,43 @@ class PhoneAuthServiceProvider extends ServiceProvider
    */
   protected function publishAssets(): void
   {
-    $this->publishes([
-      __DIR__ . '/../../resources/assets' => public_path('phone-auth'),
-    ], 'phone-auth-assets');
+    if (File::isDirectory(__DIR__ . '/../../resources/assets')) {
+      $this->publishes([
+        __DIR__ . '/../../resources/assets' => public_path('plugins/' . $this->getPluginName()),
+      ], 'phone-auth-assets');
+    }
+  }
+
+  /**
+   * 获取插件名称
+   */
+  public function getPluginName(): string
+  {
+    $composerFile = $this->resolvePath() . '/composer.json';
+    if (File::exists($composerFile)) {
+      $composer = json_decode(File::get($composerFile), true);
+      $name = $composer['name'] ?? 'siaoynli/phone-auth-plugin';
+      return str_replace('/', '-', $name);
+    }
+    return 'unknown';
+  }
+
+  /**
+   * 解析插件的基础路径
+   */
+  protected function resolvePath(): string
+  {
+    $reflection = new \ReflectionClass($this);
+    $pluginDir = dirname($reflection->getFileName());
+
+    // 向上遍历找到插件的根目录
+    while ($pluginDir !== '/') {
+      if (File::exists($pluginDir . '/composer.json')) {
+        return $pluginDir;
+      }
+      $pluginDir = dirname($pluginDir);
+    }
+
+    return dirname($reflection->getFileName());
   }
 }
