@@ -13,7 +13,7 @@ class PhoneAuthPlugin extends AbstractPlugin
 
   public function getVersion(): string
   {
-    return '1.0.2';
+    return '1.0.4';
   }
 
   public function getDescription(): string
