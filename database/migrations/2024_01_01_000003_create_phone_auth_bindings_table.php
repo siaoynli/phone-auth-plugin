@@ -35,13 +35,6 @@ return new class extends Migration
 
       // 时间戳
       $table->timestamps();
-
-      // 外键约束
-      $table->foreign('user_id')
-        ->references('id')
-        ->on('users')
-        ->onDelete('cascade');
-
       // 复合索引
       $table->index(['user_id', 'status']);
     });
