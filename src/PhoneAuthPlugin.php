@@ -4,48 +4,27 @@ namespace Siaoynli\PhoneAuth;
 
 use Siaoynli\Plugins\AbstractPlugin;
 
+/**
+ * 手机验证码登录插件
+ *
+ * 继承 AbstractPlugin，充分利用框架的延迟加载、自动发现、
+ * 配置合并和资源发布机制。
+ *
+ * 生命周期：
+ * - register(): 父类自动合并配置 + 发现并注册 src/Providers/ 下的 ServiceProvider
+ * - boot(): 插件启动阶段，可注册事件监听等
+ * - registerRoutes(): 父类自动加载 routes/ 目录下的路由文件
+ */
 class PhoneAuthPlugin extends AbstractPlugin
 {
-  public function getName(): string
-  {
-    return '手机验证码登录';
-  }
-
-  public function getVersion(): string
-  {
-    return '1.0.8';
-  }
-
-  public function getDescription(): string
-  {
-    return '提供基于手机号和验证码的登录功能';
-  }
-
-
-  /**
-   * 加载配置文件
-   */
-  public function loadConfig(): void
-  {
-    $this->config = config('plugins.siaoynli-phone-auth-plugin', []);
-    $this->enabled = $this->config['enabled'] ?? false;
-  }
-
-
-  /**
-   * 注册插件
-   */
-  public function register(): void
-  {
-    parent::register();
-
-    try {
-      // 注册插件的服务提供者
-      app()->register(\Siaoynli\PhoneAuth\Providers\PhoneAuthServiceProvider::class);
-
-      \Log::info('✓ PhoneAuthPlugin registered');
-    } catch (\Exception $e) {
-      \Log::error('Error registering PhoneAuthPlugin: ' . $e->getMessage());
+    /**
+     * 启动阶段 — 注册事件监听等
+     *
+     * 此时所有 ServiceProvider 均已注册完毕，可安全使用任何服务。
+     */
+    public function boot(): void
+    {
+        // 插件特有的启动逻辑可在此添加
+        // 例如：注册事件监听器、中间件等
     }
-  }
 }

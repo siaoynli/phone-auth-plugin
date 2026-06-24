@@ -2,119 +2,77 @@
 
 namespace Siaoynli\PhoneAuth\Providers;
 
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
+use Siaoynli\PhoneAuth\Contracts\SmsGateway;
+use Siaoynli\PhoneAuth\Drivers\AliyunSmsDriver;
+use Siaoynli\PhoneAuth\Drivers\DxSmsDriver;
+use Siaoynli\PhoneAuth\Drivers\LogSmsDriver;
+use Siaoynli\PhoneAuth\Drivers\MockSmsDriver;
+use Siaoynli\PhoneAuth\Services\PhoneAuthService;
 
+/**
+ * PhoneAuth Service Provider
+ *
+ * 负责容器绑定（SmsGateway 驱动、PhoneAuthService 单例）。
+ *
+ * 配置合并和资源发布由 AbstractPlugin + PluginPublisher 统一处理，
+ * 此处不再重复。
+ */
 class PhoneAuthServiceProvider extends ServiceProvider
 {
-  /**
-   * 注册服务
-   */
-  public function register(): void
-  {
-    $this->registerConfig();
-  }
+    /**
+     * 配置键 — 与 AbstractPlugin 的 mergeConfig() 保持一致
+     */
+    protected const CONFIG_KEY = 'plugins.siaoynli-phone-auth-plugin';
 
-  /**
-   * 启动服务
-   */
-  public function boot(): void
-  {
-    $this->publishConfig();
-    $this->publishMigrations();
-    $this->publishViews();
-    $this->publishAssets();
-  }
-
-  /**
-   * 注册配置
-   */
-  protected function registerConfig(): void
-  {
-    if (File::isFile(__DIR__ . '/../../config/plugin.php')) {
-      $configPath = __DIR__ . '/../../config/plugin.php';
-      $this->mergeConfigFrom($configPath, 'phone-auth');
-    }
-  }
-
-  /**
-   * 发布配置
-   */
-  protected function publishConfig(): void
-  {
-    if (File::isFile(__DIR__ . '/../../config/plugin.php')) {
-      $this->publishes([
-        __DIR__ . '/../../config/plugin.php' =>  config_path('plugins/' . $this->getPluginName() . '.php'),
-      ], 'phone-auth-config');
-    }
-  }
-
-  /**
-   * 发布迁移文件
-   */
-  protected function publishMigrations(): void
-  {
-    if (File::isDirectory(__DIR__ . '/../../database/migrations')) {
-      $this->publishes([
-        __DIR__ . '/../../database/migrations' => database_path('migrations'),
-      ], 'phone-auth-migrations');
-    }
-  }
-
-  /**
-   * 发布视图
-   */
-  protected function publishViews(): void
-  {
-    if (File::isDirectory(__DIR__ . '/../../resources/views')) {
-      $this->publishes([
-        __DIR__ . '/../../resources/views' => resource_path('views/plugins/' . $this->getPluginName()),
-      ], 'phone-auth-views');
-    }
-  }
-
-  /**
-   * 发布资源
-   */
-  protected function publishAssets(): void
-  {
-    if (File::isDirectory(__DIR__ . '/../../resources/assets')) {
-      $this->publishes([
-        __DIR__ . '/../../resources/assets' => public_path('plugins/' . $this->getPluginName()),
-      ], 'phone-auth-assets');
-    }
-  }
-
-  /**
-   * 获取插件名称
-   */
-  public function getPluginName(): string
-  {
-    $composerFile = $this->resolvePath() . '/composer.json';
-    if (File::exists($composerFile)) {
-      $composer = json_decode(File::get($composerFile), true);
-      $name = $composer['name'] ?? 'siaoynli/phone-auth-plugin';
-      return str_replace('/', '-', $name);
-    }
-    return 'unknown';
-  }
-
-  /**
-   * 解析插件的基础路径
-   */
-  protected function resolvePath(): string
-  {
-    $reflection = new \ReflectionClass($this);
-    $pluginDir = dirname($reflection->getFileName());
-
-    // 向上遍历找到插件的根目录
-    while ($pluginDir !== '/') {
-      if (File::exists($pluginDir . '/composer.json')) {
-        return $pluginDir;
-      }
-      $pluginDir = dirname($pluginDir);
+    /**
+     * 注册服务 — 绑定容器
+     */
+    public function register(): void
+    {
+        $this->bindSmsGateway();
+        $this->bindPhoneAuthService();
     }
 
-    return dirname($reflection->getFileName());
-  }
+    /**
+     * 启动服务
+     */
+    public function boot(): void
+    {
+        // 由 PluginPublisher 统一处理配置/迁移/视图/资源发布
+        // 此处保留作为插件特有的 boot 逻辑扩展点
+    }
+
+    /**
+     * 绑定短信网关驱动（单例）
+     *
+     * 根据配置中的 sms.driver 字段选择具体驱动实现。
+     */
+    protected function bindSmsGateway(): void
+    {
+        $this->app->singleton(SmsGateway::class, function ($app) {
+            $config = config(static::CONFIG_KEY, []);
+            $driver = $config['sms']['driver'] ?? 'log';
+
+            return match ($driver) {
+                'aliyun' => new AliyunSmsDriver($config),
+                'dxsms'  => new DxSmsDriver($config),
+                'mock'   => new MockSmsDriver($config),
+                default  => new LogSmsDriver($config),
+            };
+        });
+    }
+
+    /**
+     * 绑定 PhoneAuthService（单例）
+     */
+    protected function bindPhoneAuthService(): void
+    {
+        $this->app->singleton(PhoneAuthService::class, function ($app) {
+            return new PhoneAuthService(
+                $app->make(SmsGateway::class),
+                config(static::CONFIG_KEY, [])
+            );
+        });
+    }
 }
